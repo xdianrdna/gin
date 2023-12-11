@@ -49,6 +49,7 @@ func (ps Params) ByName(name string) (va string) {
 	return
 }
 
+// 看起来是维护了很多节点
 type methodTree struct {
 	method string
 	root   *node
@@ -72,6 +73,7 @@ func min(a, b int) int {
 	return b
 }
 
+// 最大公共前缀的长度
 func longestCommonPrefix(a, b string) int {
 	i := 0
 	max := min(len(a), len(b))
@@ -84,6 +86,7 @@ func longestCommonPrefix(a, b string) int {
 // addChild will add a child node, keeping wildcardChild at the end
 func (n *node) addChild(child *node) {
 	if n.wildChild && len(n.children) > 0 {
+		// TODO: 回看
 		wildcardChild := n.children[len(n.children)-1]
 		n.children = append(n.children[:len(n.children)-1], child, wildcardChild)
 	} else {
@@ -91,6 +94,7 @@ func (n *node) addChild(child *node) {
 	}
 }
 
+// 计算参数的数量 (: *)
 func countParams(path string) uint16 {
 	var n uint16
 	s := bytesconv.StringToBytes(path)
@@ -99,6 +103,7 @@ func countParams(path string) uint16 {
 	return n
 }
 
+// path 的层数
 func countSections(path string) uint16 {
 	s := bytesconv.StringToBytes(path)
 	return uint16(bytes.Count(s, strSlash))
@@ -113,18 +118,20 @@ const (
 	catchAll
 )
 
+// NODE is here
 type node struct {
 	path      string
-	indices   string
+	indices   string // 是各个节点的首字母组成的字符串
 	wildChild bool
 	nType     nodeType
-	priority  uint32
+	priority  uint32  // 途径本节点的路由数目
 	children  []*node // child nodes, at most 1 :param style node at the end of the array
 	handlers  HandlersChain
-	fullPath  string
+	fullPath  string // 全路径
 }
 
 // Increments priority of the given child and reorders if necessary
+// 添加节点优先级 TODO: 添加来干啥？不知道
 func (n *node) incrementChildPrio(pos int) int {
 	cs := n.children
 	cs[pos].priority++
@@ -149,6 +156,7 @@ func (n *node) incrementChildPrio(pos int) int {
 
 // addRoute adds a node with the given handle to the path.
 // Not concurrency-safe!
+// 给 node 新增一个节点
 func (n *node) addRoute(path string, handlers HandlersChain) {
 	fullPath := path
 	n.priority++
@@ -171,6 +179,14 @@ walk:
 
 		// Split edge
 		if i < len(n.path) {
+			// 新增的节点比较短时
+			// 当前节点 path = getNumber, 新增 getName
+			// i = 4
+			//                 原节点                     新节点
+			//  path           getN                       ame
+			//  prio           prio                     prio - 1
+			//  indices         N?                        g?
+
 			child := node{
 				path:      n.path[i:],
 				wildChild: n.wildChild,
